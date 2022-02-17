@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from ...helping import read_off
+from ...helping import *
 import os
 from torchvision import transforms
 
