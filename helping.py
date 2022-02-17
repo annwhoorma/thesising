@@ -136,9 +136,7 @@ class Normalize(object):
 class RandomNoise(object):
     def __call__(self, pointcloud):
         assert len(pointcloud.shape) == 2
-
         noise = np.random.normal(0, 0.02, (pointcloud.shape))
-
         return pointcloud + noise
 
 class RandomRotation_z(object):
@@ -191,38 +189,10 @@ class PointCloudData(Dataset):
         pointcloud = self.transforms(self.pcs[idx]['pc'])
         category = self.pcs[idx]['category']
         return pointcloud, self.classes[category]
-    
-class PointCloudDataPre(Dataset):
-    def __init__(self, root_dir, valid=False, folder="train", transform=default_transforms(), folders=None):
-        self.root_dir = root_dir
-        if not folders:
-            folders = [dir for dir in sorted(os.listdir(root_dir)) if os.path.isdir(root_dir/dir)]
-        self.classes = {folder: i for i, folder in enumerate(folders)}
-        self.transforms = transform
-        self.valid = valid
-        self.pcs = []
-        for category in self.classes.keys():
-            new_dir = root_dir/Path(category)/folder
-            for file in os.listdir(new_dir):
-                if file.endswith('.off'):
-                    sample = {}
-                    with open(new_dir/file, 'r') as f:
-                        verts, faces = read_off(f)
-                    sample['pc'] = self.transforms((verts, faces))
-                    sample['category'] = category
-                    self.pcs.append(sample)
-
-    def __len__(self):
-        return len(self.pcs)
-
-    def __getitem__(self, idx):
-        pointcloud = self.pcs[idx]['pc']
-        category = self.pcs[idx]['category']
-        return pointcloud, self.classes[category]
-    
+   
     
 class PointCloudDataBoth(Dataset):
-    def __init__(self, root_dir, valid=False, folder="train", static_transform=default_transforms(), later_transform=None, folders=None):
+    def __init__(self, root_dir, static_transform, later_transform=None, valid=False, folder="train", folders=None):
         self.root_dir = root_dir
         if not folders:
             folders = [dir for dir in sorted(os.listdir(root_dir)) if os.path.isdir(root_dir/dir)]
