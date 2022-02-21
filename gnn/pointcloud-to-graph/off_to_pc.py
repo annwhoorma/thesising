@@ -1,48 +1,45 @@
 import json
 from pathlib import Path
-from ...helping import *
+from helping import *
 import os
 from torchvision import transforms
+from tqdm import tqdm
 
 
 # TOFIX: folder=train/test should be enum
 class PointCloudJSON:
-    def __init__(self, root_dir, static_transform, folder="train", folders=None):
+    def __init__(self, root_dir, static_transform, path_to_save, folder="train", folders=None):
         if not folders:
             folders = [dir for dir in sorted(os.listdir(root_dir)) if os.path.isdir(root_dir/dir)]
         self.classes = {folder: i for i, folder in enumerate(folders)}
-        self.pcs = []
         for category in self.classes.keys():
-            new_dir = root_dir/Path(category)/folder
-            for file in os.listdir(new_dir):
+            self.pcs = []
+            new_dir = root_dir/Path(category)
+            for file in tqdm(os.listdir(new_dir), desc=category):
                 if file.endswith('.off'):
-                    sample = {}
                     with open(new_dir/file, 'r') as f:
                         verts, faces = read_off(f)
-                    sample['pc'] = static_transform((verts, faces))
-                    sample['label'] = category
-                    self.pcs.append(sample)
+                    pc = static_transform((verts, faces))
+                    self.pcs.append(pc)
+            export_to_jsons(self.pcs, label=category, path=path_to_save)
 
-def export_to_jsons(pcs, path: Path):
-    for i, sample in enumerate(pcs):
+def export_to_jsons(pcs, label, path: Path):
+    Path(path/label).mkdir(exist_ok=True)
+    for i, pc in enumerate(pcs):
         sample = {
-            'pc': json.dumps(sample['pc'].tolist()),
-            'label': sample['label']
+            'pc': json.dumps(pc.tolist()),
+            'label': label
         }
-        json.dump(sample, open(f'{path}/{i}.json', 'w'))
+        json.dump(sample, open(f'{path}/{label}/{i}.json', 'w'))
 
 
-Path('pc_jsons').mkdir(exist_ok=True)
-Path('pc_jsons/train').mkdir(exist_ok=True)
-Path('pc_jsons/test').mkdir(exist_ok=True)
+# Path('pc_jsons_n').mkdir(exist_ok=True)
+# Path('pc_jsons_n/train').mkdir(exist_ok=True)
 
 static_trs = transforms.Compose([
                                PointSampler(1024),
                                Normalize(),
 ])
 
-pcjson_train = PointCloudJSON(Path('ModelNet10'), static_trs, 'train') # TOFIX
-export_to_jsons(pcjson_train.pcs, Path('pc_jsons/train'))
-
-pcjson_test = PointCloudJSON(Path('ModelNet10'), static_trs, 'test') # TOFIX
-export_to_jsons(pcjson_test.pcs, Path('pc_jsons/test'))
+path = '../../datasets/ModelNet10'
+pcjson_train = PointCloudJSON(Path(path), static_trs, Path('pc_jsons/train'), 'train') # TOFIX  folder=train/test should be enum
