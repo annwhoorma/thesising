@@ -6,9 +6,11 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
+from tqdm import tqdm
 import plotly.graph_objects as go
 
 from pathlib import Path
+
 
 def default_transforms():
     return transforms.Compose([
@@ -18,7 +20,6 @@ def default_transforms():
                                ToSorted(),
                                ToTensor()
     ])
-
 
 def read_off(file):
     if file.readline().strip() != 'OFF':
@@ -30,7 +31,6 @@ def read_off(file):
     verts = [[float(s) for s in file.readline().strip().split(' ')] for i_vert in range(n_verts)]
     faces = [[int(s) for s in file.readline().strip().split(' ')][1:] for i_face in range(n_faces)]
     return verts, faces
-
 
 def visualize_rotate(data):
     x_eye, y_eye, z_eye = 1.25, 1.25, 0.8
@@ -69,7 +69,6 @@ def visualize_rotate(data):
 
     return fig
 
-
 def pcshow(xs, ys, zs):
     data = [go.Scatter3d(x=xs, y=ys, z=zs, mode='markers')]
     fig = visualize_rotate(data)
@@ -78,7 +77,6 @@ def pcshow(xs, ys, zs):
                                             color='Black')),
                       selector=dict(mode='markers'))
     fig.show()
-
 
 
 class PointSampler(object):
@@ -127,7 +125,7 @@ class PointSampler(object):
 
 class Normalize(object):
     def __call__(self, pointcloud):
-        assert len(pointcloud.shape)==2
+        assert len(pointcloud.shape) == 2
         
         norm_pointcloud = pointcloud - np.mean(pointcloud, axis=0) 
         norm_pointcloud /= np.max(np.linalg.norm(norm_pointcloud, axis=1))
@@ -164,7 +162,7 @@ class ToTensor(object):
 
 
 class PointCloudData(Dataset):
-    def __init__(self, root_dir, valid=False, folder="train", transform=default_transforms(), folders=None):
+    def __init__(self, root_dir, valid=False, transform=default_transforms(), folders=None):
         self.root_dir = root_dir
         if not folders:
             folders = [dir for dir in sorted(os.listdir(root_dir)) if os.path.isdir(root_dir/dir)]
@@ -172,8 +170,8 @@ class PointCloudData(Dataset):
         self.transforms = transform
         self.valid = valid
         self.pcs = []
-        for category in self.classes.keys():
-            new_dir = root_dir/Path(category)/folder
+        for category in tqdm(self.classes.keys(), desc=category):
+            new_dir = root_dir/Path(category)
             for file in os.listdir(new_dir):
                 if file.endswith('.off'):
                     sample = {}
@@ -193,7 +191,7 @@ class PointCloudData(Dataset):
    
     
 class PointCloudDataBoth(Dataset):
-    def __init__(self, root_dir, static_transform, later_transform=None, valid=False, folder="train", folders=None):
+    def __init__(self, root_dir, static_transform, later_transform=None, valid=False, folders=None):
         self.root_dir = root_dir
         if not folders:
             folders = [dir for dir in sorted(os.listdir(root_dir)) if os.path.isdir(root_dir/dir)]
@@ -203,8 +201,8 @@ class PointCloudDataBoth(Dataset):
         self.valid = valid
         self.pcs = []
         for category in self.classes.keys():
-            new_dir = root_dir/Path(category)/folder
-            for file in os.listdir(new_dir):
+            new_dir = root_dir/Path(category)
+            for file in tqdm(os.listdir(new_dir), desc=category):
                 if file.endswith('.off'):
                     sample = {}
                     with open(new_dir/file, 'r') as f:
